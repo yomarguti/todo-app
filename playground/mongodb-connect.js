@@ -1,6 +1,6 @@
 const mongoClient = require('mongodb').MongoClient;
 
-mongoClient.connect(process.env.MONGO_URI || 'mongodb://localhost:27017',{ useNewUrlParser: true }, (err, client) => {
+mongoClient.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017',{ useNewUrlParser: true }, (err, client) => {
     if (err) {
         return console.log('Unable to connect to MongoDB Server');
     }
