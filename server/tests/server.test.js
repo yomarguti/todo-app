@@ -73,17 +73,54 @@ describe('GET /todos/:id', () => {
 
     it('Deberia retornar un error 404 si el item no es encontrado', (done) => {
         request(app)
-        .get('/todos/5bae505ddbdce61f2c1063eb')
-        .expect(404)
-        .end(done)
+            .get('/todos/5bae505ddbdce61f2c1063eb')
+            .expect(404)
+            .end(done)
     })
 
     it('Deberia retornar un error 404 para id no validos', (done) => {
         request(app)
-        .get('/todos/5bae505ddbdce61f2c106')
-        .expect(404)
-        .end(done)
+            .get('/todos/5bae505ddbdce61f2c106')
+            .expect(404)
+            .end(done)
     })
 
 
+})
+
+describe('DELETE /todos/:id', () => {
+    it('Deberia elminar un item', (done) => {
+        request(app)
+            .delete('/todos/5bae543edc4e531f40ac6b16')
+            .expect(200)
+            .expect(res => {
+                expect(res.body.todo._id).to.be.equal('5bae543edc4e531f40ac6b16')
+            })
+            .end((err, res) => {
+                if (err) {
+                    return done(err)
+                }
+
+                Todo.findById('5bae543edc4e531f40ac6b16').then(todo => {
+                    expect(todo).to.be.equal(null)
+                    done()
+                })
+                .catch(e => done(e))
+            })
+    })
+
+    it('Deberia retornar 404 si el item no es encontrado', (done) => {
+        request(app)
+        .delete('/todos/5bae3e0cf8cded1e5d021a85')
+        .expect(404)
+        .end(done)
+        
+    })
+
+    it('Deberia retornar 404 si el id del item es invalido', (done) => {
+        request(app)
+        .delete('/todos/5bae3e0cf8cded1e5d021a8')
+        .expect(404)
+        .end(done)
+    })
 })
