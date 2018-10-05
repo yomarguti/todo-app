@@ -1,3 +1,5 @@
+
+require('./config');
 const _ = require('lodash');
 const {mongoose} = require('./mongoose');
 const {Todo} = require('./models/todo');
@@ -8,7 +10,7 @@ const {ObjectID} = require('mongodb');
 
 //Server for routes
 
-var port = process.env.PORT || 3000
+var port = process.env.PORT
 
 
 var app = express();
@@ -99,6 +101,22 @@ app.patch('/todos/:id', (req, res) => {
     })
     .catch(e => {
         res.status(400).send({});
+    })
+
+
+})
+
+//users
+
+app.post('/users', (req, res) => {
+    var body = _.pick(req.body, ['email', 'password'])
+
+    var user = new User(body);
+
+    user.save().then(user => {
+        res.send({user})
+    }, e => {
+        res.status(400).send(e);
     })
 
 
