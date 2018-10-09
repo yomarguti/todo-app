@@ -131,9 +131,12 @@ app.get('/users/me', authenticate, (req, res) => {
     res.send(req.user);
 })
 
-app.listen(port, () => {
-    console.log('Started on port ', port);
-})
+if(!module.parent) {
+    app.listen(port, () => {
+        console.log('Started on port ', port);
+    })
+ }
+
 
 module.exports = {
     app
