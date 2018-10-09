@@ -7,6 +7,7 @@ const {User} = require('./models/user');
 const express = require('express');
 const bodyParser = require('body-parser');
 const {ObjectID} = require('mongodb');
+const {authenticate} = require('./middleware/authenticate');
 
 //Server for routes
 
@@ -122,6 +123,12 @@ app.post('/users', (req, res) => {
     });
 
 
+})
+
+
+
+app.get('/users/me', authenticate, (req, res) => {
+    res.send(req.user);
 })
 
 app.listen(port, () => {
