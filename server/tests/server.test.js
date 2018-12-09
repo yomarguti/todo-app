@@ -17,6 +17,7 @@ describe('POST /todos', () => {
 
         request(app)
             .post('/todos')
+            .set('x-auth',users[0].tokens[0].token)
             .send({text})
             .expect(200)
             .expect(res => {
@@ -43,6 +44,7 @@ describe('POST /todos', () => {
 
         request(app)
             .post('/todos')
+            .set('x-auth',users[0].tokens[0].token)
             .send({})
             .expect(400)
             .end((err, res) => {
@@ -64,9 +66,11 @@ describe('GET /todos', () => {
     it('Obtener todos los Items de la lista', (done) => {
         request(app)
             .get('/todos')
+            .set('x-auth',users[0].tokens[0].token)
+            .set('x-auth',users[0].tokens[0].token)
             .expect(200)
             .expect(res => {
-                expect(res.body.todos.length).to.be.equal(2);
+                expect(res.body.todos.length).to.be.equal(1);
             })
             .end(done)
     })
@@ -76,6 +80,7 @@ describe('GET /todos/:id', () => {
     it('Deberia retornar un item de la lista', (done) => {
         request(app)
             .get(`/todos/${todos[0]._id.toHexString()}`)
+            .set('x-auth',users[0].tokens[0].token)
             .expect(200)
             .expect(res => {
                 expect(res.body.todo.text).to.be.equal(todos[0].text)
@@ -83,10 +88,19 @@ describe('GET /todos/:id', () => {
             .end(done)
     })
 
+    it('No Deberia retornar un item creado por otro usuario', (done) => {
+        request(app)
+            .get(`/todos/${todos[1]._id.toHexString()}`)
+            .set('x-auth',users[0].tokens[0].token)
+            .expect(404)
+            .end(done)
+    })
+
     it('Deberia retornar un error 404 si el item no es encontrado', (done) => {
         var hexId = new ObjectID().toHexString();
         request(app)
             .get(`/todos/${hexId}`)
+            .set('x-auth',users[0].tokens[0].token)
             .expect(404)
             .end(done)
     })
@@ -94,6 +108,7 @@ describe('GET /todos/:id', () => {
     it('Deberia retornar un error 404 para id no validos', (done) => {
         request(app)
             .get('/todos/123abc')
+            .set('x-auth',users[0].tokens[0].token)
             .expect(404)
             .end(done)
     })
@@ -106,6 +121,7 @@ describe('DELETE /todos/:id', () => {
         var hexId = todos[1]._id.toHexString();
         request(app)
             .delete(`/todos/${hexId}`)
+            .set('x-auth',users[1].tokens[0].token)
             .expect(200)
             .expect(res => {
                 expect(res.body.todo._id).to.be.equal(hexId)
@@ -123,10 +139,30 @@ describe('DELETE /todos/:id', () => {
             })
     })
 
+    it('Deberia elminar un item', (done) => {
+        var hexId = todos[0]._id.toHexString();
+        request(app)
+            .delete(`/todos/${hexId}`)
+            .set('x-auth',users[1].tokens[0].token)
+            .expect(404)
+            .end((err, res) => {
+                if (err) {
+                    return done(err)
+                }
+
+                Todo.findById(hexId).then(todo => {
+                    expect(todo).to.exist
+                    done()
+                })
+                .catch(e => done(e))
+            })
+    })
+
     it('Deberia retornar 404 si el item no es encontrado', (done) => {
         var hexId = new ObjectID().toHexString();
         request(app)
         .delete(`/todos/${hexId}`)
+        .set('x-auth',users[1].tokens[0].token)
         .expect(404)
         .end(done)
         
@@ -135,6 +171,7 @@ describe('DELETE /todos/:id', () => {
     it('Deberia retornar 404 si el id del item es invalido', (done) => {
         request(app)
         .delete('/todos/123abc')
+        .set('x-auth',users[1].tokens[0].token)
         .expect(404)
         .end(done)
     })
@@ -148,6 +185,8 @@ describe('PATH /todos/:id', () => {
     
         request(app)
             .patch(`/todos/${hexId}`)
+            .set('x-auth',users[0].tokens[0].token)
+
             .send({
                 completed: true,
                 text
@@ -161,6 +200,23 @@ describe('PATH /todos/:id', () => {
             .end(done);
     })
 
+    it('No Deberia actualizar una lista de otro usuario', (done) => {
+
+        var hexId = todos[0]._id.toHexString();
+        var text = 'This should be the new text';
+    
+        request(app)
+            .patch(`/todos/${hexId}`)
+            .set('x-auth',users[1].tokens[0].token)
+
+            .send({
+                completed: true,
+                text
+            })
+            .expect(404)
+            .end(done);
+    })
+
     it('Deberia limpiar completeAt cuando el todo no este completado', (done) => {
 
         var hexId = todos[1]._id.toHexString();
@@ -168,6 +224,7 @@ describe('PATH /todos/:id', () => {
     
         request(app)
             .patch(`/todos/${hexId}`)
+            .set('x-auth',users[1].tokens[0].token)
             .send({
                 completed: false,
                 text
@@ -250,4 +307,82 @@ describe('POST /users', ()=> {
         .expect(400)
         .end(done); 
     })
+
+    
 })
+
+describe('POST /users/login', () => {
+    it('Deberia login a user y retornar el auth token', (done) => {
+        request(app)
+            .post('/users/login')
+            .send({
+                email: users[1].email,
+                password: users[1].password
+            })
+            .expect(200)
+            .expect(res => {
+                expect(res.headers['x-auth']).to.exist;
+            })
+            .end((err, res) => {
+                if (err) {
+                    return done(err)
+                }
+
+                User.findById(users[1]._id).then(user => {
+                    expect(user.tokens[1]).to.include({
+                        access: 'auth',
+                        token: res.headers['x-auth']
+                    });
+                    done();
+                }).catch(e => done(e));
+            })
+    })
+
+    it('Deberia rechazar login invalido', (done) => {
+        request(app)
+        .post('/users/login')
+        .send({
+            email: users[1].email,
+            password: '123456891011'
+        })
+        .expect(400)
+        .expect(res => {
+            expect(res.headers['x-auth']).to.not.exist;
+        })
+        .end((err, res) => {
+            if (err) {
+                return done(err)
+            }
+
+            User.findById(users[1]._id).then(user => {
+                expect(user.tokens.length).to.equal(1);
+                done();
+            }).catch(e => done(e));
+        })
+    })
+})
+
+describe('DELETE /users/me/token', () => {
+    it('Deberia eliminar un token de autenticacion en logout', (done) => {
+        request(app)
+        .delete('/users/me/token')
+        .set('x-auth',users[0].tokens[0].token)
+        .expect(200)
+        .end((err, res) => {
+            if (err) {
+                return done(err)
+            }
+
+            User.findById(users[0]._id).then( user => {
+                expect(user.tokens.length).to.be.equal(0);
+                done();
+            })
+            .catch(e => {
+                done(e);
+            })
+
+
+        })
+    });
+});
+

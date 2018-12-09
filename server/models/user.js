@@ -13,7 +13,7 @@ var userSchema = new mongoose.Schema({
         unique: true,
         validate: {
             validator: validator.isEmail,
-            message: '(VALUE) is not a valid email'
+            message: '{VALUE} is not a valid email'
         }
 
     },
@@ -35,6 +35,7 @@ var userSchema = new mongoose.Schema({
     
 })
 
+//Instance methods - access individual document
 // Metodo que crea los tokens dentro del modelo
 userSchema.methods.generateAuthToken = function () {
     var user = this;
@@ -43,6 +44,8 @@ userSchema.methods.generateAuthToken = function () {
     
     user.tokens = user.tokens.concat([{access, token}])
 
+    //Devuelve una promesa y el token es el valor devuelto en caso de 
+    // de success
     return user.save().then(() => {
         return token;
     })
@@ -51,6 +54,7 @@ userSchema.methods.generateAuthToken = function () {
 }
 
 //Modal Methods. se llaman directamene desde el modelo User
+// Do not requiere an individual document
 userSchema.statics.findByToken = function (token) {
     var User = this;
     var decoded;
@@ -97,6 +101,39 @@ userSchema.pre('save', function (next) {
 
 
 })
+
+//modal method - to return a user if exists
+userSchema.statics.findByCredentials = function (email, password) {
+    var user = this;
+
+    return User.findOne({email}).then(user => {
+        if (!user) {
+            return Promise.reject()
+        }
+
+        return new Promise((resolve, reject) => {
+            bcrypt.compare(password, user.password, (err, res) => {
+                if (res) {
+                    resolve(user)
+                } else {
+                    reject()
+                }
+            })
+        })
+
+    })
+};
+
+userSchema.methods.removeToken = function (token) {
+    var user = this;
+
+    return user.updateOne({
+        $pull: {
+            tokens: {token}
+        }
+    });
+
+};
 
 
 var User = mongoose.model('User', userSchema)
